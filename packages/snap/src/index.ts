@@ -1,17 +1,20 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import { panel, text } from '@metamask/snaps-ui';
+import { StaticModuleRecord } from '@endo/static-module-record';
 
-const compartment = new Compartment({
+const defaultEndowments = {
   snap,
   Reflect,
-  Object,
-});
+  Object, // why was this needed? IT should be there by defalt.
+};
+
+let subSnapExports: any = {};
 
 /**
  * Persists the snap state
  * @param newState - The new state to persist
  */
-async function updateState (newState: Record<string, unknown>) {
+async function updateState(newState: Record<string, unknown>) {
   await snap.request({
     method: 'snap_manageState',
     params: { operation: 'update', newState },
@@ -22,7 +25,7 @@ async function updateState (newState: Record<string, unknown>) {
  * Retrieves the snap state
  * @returns The snap state
  */
-async function getState () {
+async function getState() {
   return await snap.request({
     method: 'snap_manageState',
     params: { operation: 'get' },
@@ -69,6 +72,28 @@ async function checkPermittedDomain(domain: string) {
   return permittedDomains.includes(domain);
 }
 
+/**
+ * Evaluates the given code in a compartment.
+ *
+ * @param code - The code to evaluate.
+ * @returns The export namespace of the evaluated code.
+ */
+async function evaluate(code: string): Promise<object> {
+  const compartment = new Compartment(
+    defaultEndowments,
+    {
+      // we could use moduleMapHook to avoid an asynchronous call to import and make importNow work, but it's likely more complicated than handling it asynchronously
+    },
+    {
+      importHook: async (_specifier: string) => {
+        return new StaticModuleRecord(code, '.');
+      },
+      resolveHook: a => a,
+    },
+  );
+  const { namespace } = await compartment.import('anything');
+  return namespace;
+}
 
 /**
  * Handle incoming JSON-RPC requests, sent through `wallet_invokeSnap`.
@@ -104,7 +129,7 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       approved = await snap.request({
         method: 'snap_dialog',
         params: {
-          type: 'Confirmation',
+          type: 'confirmation',
           content: warning,
         },
       });
@@ -123,22 +148,13 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       if (!('params' in request) || !code || typeof code !== 'string') {
         throw new Error('Evaluate method requires a string to evaluate.');
       }
-      return compartment.evaluate(code);
-    case 'hello':
-      return snap.request({
-        method: 'snap_dialog',
-        params: {
-          type: 'Confirmation',
-          content: panel([
-            text(`Hello, **${origin}**!`),
-            text('This custom confirmation is just for display purposes.'),
-            text(
-              'But you can edit the snap source code to make it do something, if you want to!',
-            ),
-          ]),
-        },
-      });
+
+      subSnapExports = await evaluate(code);
+      return 'ok';
     default:
+      if (subSnapExports.onRpcRequest) {
+        return subSnapExports.onRpcRequest({ origin, request });
+      }
       throw new Error('Method not found.');
   }
 };

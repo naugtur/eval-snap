@@ -64,5 +64,20 @@
     "prettier-plugin-packagejson": "^2.2.18",
     "rimraf": "^3.0.2",
     "typescript": "^4.7.4"
+  },
+  "lavamoat": {
+    "allowScripts": {
+      "gatsby": false,
+      "gatsby-plugin-manifest>sharp": false,
+      "gatsby>@parcel/cache>lmdb": false,
+      "gatsby>@parcel/core>@parcel/fs>@parcel/watcher": false,
+      "gatsby>@pmmmwh/react-refresh-webpack-plugin>core-js-pure": false,
+      "gatsby>core-js": false,
+      "gatsby>gatsby-cli": false,
+      "gatsby>gatsby-telemetry": false,
+      "gatsby>lmdb": false,
+      "gatsby>lmdb>msgpackr>msgpackr-extract": false,
+      "gatsby>memoizee>es5-ext": false
+    }
   }
 }

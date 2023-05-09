@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A snap for exploring the Snap API.",
   "proposedName": "REPL Snap",
   "repository": {
@@ -7,7 +7,7 @@
     "url": "https://github.com/MetaMask/template-snap-monorepo.git"
   },
   "source": {
-    "shasum": "6w74zod09+aIZh0tBek/no+YxXec2nMlAZLQ2CdMskU=",
+    "shasum": "+rrTh5X1/JUwxGUe8kpve0jwf5/nTOzZ5riOGK+N0Vk=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",

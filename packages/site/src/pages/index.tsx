@@ -5,7 +5,6 @@ import { MetamaskActions, MetaMaskContext } from '../hooks';
 import {
   connectSnap,
   getSnap,
-  sendHello,
   requestPermissions,
   evaluate,
   shouldDisplayReconnectButton,
