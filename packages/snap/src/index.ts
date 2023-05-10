@@ -6,6 +6,7 @@ const defaultEndowments = {
   snap,
   Reflect,
   Object, // why was this needed? IT should be there by defalt.
+  console,
 };
 
 let subSnapExports: any = {};
@@ -150,10 +151,10 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       }
 
       subSnapExports = await evaluate(code);
-      return 'ok';
+      return `ok ${Object.keys(subSnapExports).join()}`;
     default:
       if (subSnapExports.onRpcRequest) {
-        return subSnapExports.onRpcRequest({ origin, request });
+        return await subSnapExports.onRpcRequest({ origin, request });
       }
       throw new Error('Method not found.');
   }

@@ -5,6 +5,7 @@ import { MetamaskActions, MetaMaskContext } from '../hooks';
 import {
   connectSnap,
   getSnap,
+  sendHello,
   requestPermissions,
   evaluate,
   shouldDisplayReconnectButton,
@@ -221,6 +222,25 @@ const Index = () => {
             button: (
               <SendHelloButton
                 onClick={handlePermissionsRequestClick}
+                disabled={!state.installedSnap}
+              />
+            ),
+          }}
+          disabled={!state.installedSnap}
+          fullWidth={
+            state.isFlask &&
+            Boolean(state.installedSnap) &&
+            !shouldDisplayReconnectButton(state.installedSnap)
+          }
+        />
+        <Card
+          content={{
+            title: 'Send hello',
+            description:
+              'Sends a regular message',
+            button: (
+              <SendHelloButton
+                onClick={sendHello}
                 disabled={!state.installedSnap}
               />
             ),

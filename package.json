@@ -54,6 +54,10 @@
     }
   },
   "dependencies": {
-    "@lavamoat/allow-scripts": "^2.3.1"
+    "@lavamoat/allow-scripts": "^2.3.1",
+    "patch-package": "^7.0.0"
+  },
+  "resolutions": {
+    "jsesc@2.5.2": "patch:jsesc@npm:2.5.2#.yarn/patches/jsesc-npm-2.5.2-c5acb78804.patch"
   }
 }

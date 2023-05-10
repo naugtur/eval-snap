@@ -1,0 +1,26 @@
+diff --git a/node_modules/jsesc/jsesc.js b/node_modules/jsesc/jsesc.js
+index 7b8b923..49e1917 100644
+--- a/node_modules/jsesc/jsesc.js
++++ b/node_modules/jsesc/jsesc.js
+@@ -30,7 +30,7 @@ const forEach = (array, callback) => {
+ 
+ const toString = object.toString;
+ const isArray = Array.isArray;
+-const isBuffer = Buffer.isBuffer;
++const isBuffer = (typeof Buffer !== 'undefined')?Buffer.isBuffer:()=>false;
+ const isObject = (value) => {
+ 	// This is a very simple check, but it’s good enough for what we need.
+ 	return toString.call(value) == '[object Object]';
+@@ -316,10 +316,11 @@ const jsesc = (argument, options) => {
+ 		result = result.replace(/\$\{/g, '\\\$\{');
+ 	}
+ 	if (options.isScriptContext) {
++		const commentRe = RegExp('<'+'!--','g')
+ 		// https://mathiasbynens.be/notes/etago
+ 		return result
+ 			.replace(/<\/(script|style)/gi, '<\\/$1')
+-			.replace(/<!--/g, json ? '\\u003C!--' : '\\x3C!--');
++			.replace(commentRe, json ? '\\u003C!--' : '\\x3C!--');
+ 	}
+ 	return result;
+ };
