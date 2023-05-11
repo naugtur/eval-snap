@@ -32,15 +32,15 @@ const syntheticModulesCompartment = new Compartment(
     },
   },
 );
-const addToCompartment = async (name, nsObject) => {
+const addToCompartment = async (name: string, nsObject: object) => {
   rawModules[name] = nsObject;
   return (await syntheticModulesCompartment.import(name)).namespace;
 };
 
-
 /**
- * Persists the snap state
- * @param newState - The new state to persist
+ * Persists the snap state.
+ *
+ * @param newState - The new state to persist.
  */
 async function updateState(newState: Record<string, unknown>) {
   await snap.request({
@@ -117,7 +117,7 @@ async function evaluate(code: string): Promise<object> {
     },
     {
       importHook: async (specifier: string) => {
-        if (specifier === '*/*/*') {
+        if (specifier === '*/#/*') {
           return new StaticModuleRecord(code, '.');
         }
 
@@ -127,7 +127,9 @@ async function evaluate(code: string): Promise<object> {
             method: 'snap_dialog',
             params: {
               type: 'confirmation',
-              content: text(`Knock knock! Who's there? It's ${specifier}. Can I come in?`),
+              content: text(
+                `Knock knock! Who's there? It's ${specifier}. Can I come in?`,
+              ),
             },
           });
           if (approved) {
@@ -140,7 +142,9 @@ async function evaluate(code: string): Promise<object> {
           method: 'snap_dialog',
           params: {
             type: 'confirmation',
-            content: text(`Knock knock! Who's there? ${specifier} from NPM. Can I come in?`),
+            content: text(
+              `Knock knock! Who's there? ${specifier} from NPM. Can I come in?`,
+            ),
           },
         });
         if (approved) {
@@ -158,7 +162,7 @@ async function evaluate(code: string): Promise<object> {
       resolveHook: (a) => a,
     },
   );
-  const { namespace } = await compartment.import('*/*/*');
+  const { namespace } = await compartment.import('*/#/*'); // does this look like an angry Koala bear to you too?
   return namespace;
 }
 
