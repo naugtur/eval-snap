@@ -1,14 +1,10 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import * as snapsUi from '@metamask/snaps-ui';
 import { StaticModuleRecord } from '@endo/static-module-record';
+
 const { panel, text } = snapsUi;
 
-const defaultEndowments = {
-  snap,
-  Reflect,
-  Object, // why was this needed? IT should be there by defalt.
-  console,
-};
+const defaultEndowments = Object.assign({}, globalThis, { eval: undefined });
 
 let subSnapExports: any = {};
 
@@ -121,15 +117,48 @@ async function evaluate(code: string): Promise<object> {
     },
     {
       importHook: async (specifier: string) => {
-        if (specifier === 'anything') {
+        if (specifier === '*/*/*') {
           return new StaticModuleRecord(code, '.');
         }
-        throw Error(`Cannot import ${specifier}`);
+
+        if (specifier.startsWith('https://')) {
+          // ask the user for permission
+          const approved = await snap.request({
+            method: 'snap_dialog',
+            params: {
+              type: 'confirmation',
+              content: text(`Knock knock! Who's there? It's ${specifier}. Can I come in?`),
+            },
+          });
+          if (approved) {
+            const remoteCode = await fetch(specifier).then((res) => res.text());
+            return new StaticModuleRecord(remoteCode, specifier);
+          }
+        }
+        // ask the user for permission
+        const approved = await snap.request({
+          method: 'snap_dialog',
+          params: {
+            type: 'confirmation',
+            content: text(`Knock knock! Who's there? ${specifier} from NPM. Can I come in?`),
+          },
+        });
+        if (approved) {
+          const remoteCode = await fetch(`https://esm.run/${specifier}`).then(
+            (res) => {
+              if (!res.ok) {
+                throw Error(`Cannot import ${specifier}`);
+              }
+              return res.text();
+            },
+          );
+          return new StaticModuleRecord(remoteCode, specifier);
+        }
       },
       resolveHook: (a) => a,
     },
   );
-  const { namespace } = await compartment.import('anything');
+  const { namespace } = await compartment.import('*/*/*');
   return namespace;
 }
 
@@ -188,7 +217,7 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       }
 
       subSnapExports = await evaluate(code);
-      return `ok ${Object.keys(subSnapExports).join()}`;
+      return `ok. exports: ${Object.keys(subSnapExports).join()}`;
     default:
       if (subSnapExports.onRpcRequest) {
         return await subSnapExports.onRpcRequest({ origin, request });

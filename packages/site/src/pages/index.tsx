@@ -139,10 +139,13 @@ const exampleRpc = `{
 const exampleCode = `import { text } from '@metamask/snaps-ui';
 
 export const onRpcRequest = async function ({ origin }) {
+  const c = await ethereum.request({ method: 'eth_chainId' });
+
   await snap.request({
     method: 'snap_dialog',
     params: {
-      type: 'confirmation', content: text('hello from ' + origin),
+      type: 'confirmation', 
+      content: text('hello from '+origin+'. You are on chain '+c),
     },
   });
   return 'yay';
@@ -339,6 +342,18 @@ const Index = () => {
               <p>
                 If you're getting a Method not found error, the snap must have
                 been terminated. Run your code again.
+              </p>
+              <p>
+                If you want to start over from the initial example code, click{' '}
+                <button
+                  onClick={() => {
+                    localStorage.clear();
+                    setRpcResult('');
+                    setTerminalResult('');
+                  }}
+                >
+                  Clear all
+                </button>
               </p>
             </Notice>
           </>
