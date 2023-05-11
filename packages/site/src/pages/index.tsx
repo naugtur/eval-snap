@@ -335,14 +335,14 @@ const Index = () => {
               ></CodeBox>
               <ResponseBox>{rpcResult}</ResponseBox>
             </TerminalContainer>
+            <Notice>
+              <p>
+                If you're getting a Method not found error, the snap must have
+                been terminated. Run your code again.
+              </p>
+            </Notice>
           </>
         )}
-        <Notice>
-          <p>
-            If you're getting a Method not found error, the snap must have been
-            terminated. Run your code again.
-          </p>
-        </Notice>
       </CardContainer>
     </Container>
   );

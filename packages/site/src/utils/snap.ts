@@ -51,7 +51,7 @@ export const getSnap = async (version?: string): Promise<Snap | undefined> => {
 };
 
 /**
- * Invoke the "evaluate" method from the REPL snap.
+ * Invoke the "evaluate" method from the snap-in-a-snap snap.
  */
 
 export const evaluate = async (code: string) => {
@@ -68,7 +68,7 @@ export const evaluate = async (code: string) => {
 };
 
 /**
- * Invoke the "requestPermissions" method from the REPL snap.
+ * Invoke the "requestPermissions" method from the snap-in-a-snap snap.
  */
 
 export const requestPermissions = async () => {
