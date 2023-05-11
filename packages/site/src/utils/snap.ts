@@ -86,10 +86,22 @@ export const requestPermissions = async () => {
  */
 
 export const sendHello = async () => {
-  await window.ethereum.request({
+  const response = await window.ethereum.request({
     method: 'wallet_invokeSnap',
     params: { snapId: defaultSnapOrigin, request: { method: 'hello' } },
   });
+  console.info(response);
+};
+/**
+ * Send any RPC
+ */
+
+export const sendRpc = async (requestText: string) => {
+  const response = await window.ethereum.request({
+    method: 'wallet_invokeSnap',
+    params: { snapId: defaultSnapOrigin, request: JSON.parse(requestText) },
+  });
+  return response;
 };
 
 export const isLocalSnap = (snapId: string) => snapId.startsWith('local:');

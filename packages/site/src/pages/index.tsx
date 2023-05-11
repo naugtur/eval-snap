@@ -1,11 +1,11 @@
 import { useContext, useState } from 'react';
 import styled from 'styled-components';
-import { ReactReplView } from 'awesome-react-repl';
 import { MetamaskActions, MetaMaskContext } from '../hooks';
 import {
   connectSnap,
   getSnap,
   sendHello,
+  sendRpc,
   requestPermissions,
   evaluate,
   shouldDisplayReconnectButton,
@@ -66,10 +66,16 @@ const CardContainer = styled.div`
 `;
 
 const TerminalContainer = styled.div`
-display: flex;
-width: 100%; /* set the width of the parent element */
+  display: flex;
+  width: 100%; /* set the width of the parent element */
+  flex-direction: column;
 
-& > * {
+  padding: 10px 0;
+`;
+const CodeBox = styled.textarea`
+  min-height: 30rem;
+  margin-top: 5px;
+  overflow: auto;
   background-color: rgb(51, 51, 51);
   border-radius: 4px;
   box-shadow: rgba(0, 0, 0, 0.5) 0px 2px 2px 0px;
@@ -77,14 +83,18 @@ width: 100%; /* set the width of the parent element */
   font-family: monospace;
   font-size: 16px;
   font-weight: 700;
-  overflow-x: hidden;
-  overflow-y: hidden;
   transition: background-color 0.1s linear;
-  
+
   /* Add this to make the terminal take the full width of its parent */
   flex-grow: 1;
-}
-`
+`;
+const ResponseBox = styled.pre`
+  min-height: 2em;
+  overflow: auto;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5em;
+`;
 
 const Notice = styled.div`
   background-color: ${({ theme }) => theme.colors.background.alternative};
@@ -123,15 +133,25 @@ const ErrorMessage = styled.div`
   }
 `;
 
-type Line = {
-  type: 'input' | 'output';
-  value: string;
-};
-type Lines = Line[];
+const exampleRpc = `{ 
+  "method": "hello" 
+}`;
+const exampleCode = `import { text } from '@metamask/snaps-ui';
+
+export const onRpcRequest = async function ({ origin }) {
+  await snap.request({
+    method: 'snap_dialog',
+    params: {
+      type: 'confirmation', content: text('hello from ' + origin),
+    },
+  });
+  return 'yay';
+};`;
 
 const Index = () => {
   const [state, dispatch] = useContext(MetaMaskContext);
-  const [lines, setLines] = useState<Lines>([]);
+  const [rpcResult, setRpcResult] = useState<string>('');
+  const [terminalResult, setTerminalResult] = useState<string>('');
 
   const handleConnectClick = async () => {
     try {
@@ -160,11 +180,9 @@ const Index = () => {
   return (
     <Container>
       <Heading>
-        Welcome to <Span>REPL Snap</Span>
+        Welcome to <Span>Snap in a Snap</Span>
       </Heading>
-      <Subtitle>
-        Get started by editing <code>src/index.ts</code>
-      </Subtitle>
+      <Subtitle>We have to go deeper...</Subtitle>
       <CardContainer>
         {state.error && (
           <ErrorMessage>
@@ -233,11 +251,10 @@ const Index = () => {
             !shouldDisplayReconnectButton(state.installedSnap)
           }
         />
-        <Card
+        {/* <Card
           content={{
             title: 'Send hello',
-            description:
-              'Sends a regular message',
+            description: 'Sends a regular message',
             button: (
               <SendHelloButton
                 onClick={sendHello}
@@ -251,55 +268,79 @@ const Index = () => {
             Boolean(state.installedSnap) &&
             !shouldDisplayReconnectButton(state.installedSnap)
           }
-        />
+        /> */}
         {state.installedSnap && (
-          <TerminalContainer>
-            <ReactReplView
-              title="Snap REPL"
-              width="100%"
-              height={300}
-              initiallyExecute={['a = 3', 'b = 4', 'a * b']}
-              lines={lines}
-              onSubmit={(code: string) => {
-                setLines((prevLines) => [
-                  ...prevLines,
-                  {
-                    type: 'input',
-                    value: code,
-                  },
-                ]);
-              
-                evaluate(code)
-                  .then((result) => {
-                    setLines((prevLines) => [
-                      ...prevLines,
-                      {
-                        type: 'output',
-                        value: result,
-                      },
-                    ]);
-                  })
-                  .catch((e) => {
-                    setLines((prevLines) => [
-                      ...prevLines,
-                      {
-                        type: 'output',
-                        value: `Error: ${e.message}`,
-                      },
-                    ]);
-                    console.error(e);
-                    return e.message;
-                  });
-              }}
-            />
-          </TerminalContainer>
+          <>
+            <Subtitle>Write your snap here</Subtitle>
+            <TerminalContainer>
+              <button
+                onClick={(e) => {
+                  setTerminalResult('waiting...');
+                  evaluate(
+                    // I know, I know, but I already have it in localStorage, why duplicate state?
+                    window.localStorage.getItem('code') || exampleCode,
+                  ).then(
+                    (result) => {
+                      console.info(result);
+                      setTerminalResult(result || '');
+                    },
+                    (err) => {
+                      console.warn(err);
+                      setTerminalResult(err.message || '');
+                    },
+                  );
+                }}
+              >
+                Run
+              </button>
+              <CodeBox
+                onChange={(e) => {
+                  const code = e.target.value;
+                  window.localStorage.setItem('code', code);
+                }}
+                defaultValue={
+                  window.localStorage.getItem('code') || exampleCode
+                }
+              ></CodeBox>
+              <ResponseBox>{terminalResult}</ResponseBox>
+            </TerminalContainer>
+            <Subtitle>Send RPC to it</Subtitle>
+
+            <TerminalContainer>
+              <button
+                onClick={(e) => {
+                  setRpcResult('waiting...');
+                  sendRpc(
+                    window.localStorage.getItem('rpc') || exampleRpc,
+                  ).then(
+                    (result) => {
+                      console.info(result);
+                      setRpcResult(result || '');
+                    },
+                    (err) => {
+                      console.warn(err);
+                      setRpcResult('Error:\n' + err.message || '');
+                    },
+                  );
+                }}
+              >
+                Send RPC
+              </button>
+              <CodeBox
+                onChange={(e) => {
+                  const rpc = e.target.value;
+                  window.localStorage.setItem('rpc', rpc);
+                }}
+                defaultValue={window.localStorage.getItem('rpc') || exampleRpc}
+              ></CodeBox>
+              <ResponseBox>{rpcResult}</ResponseBox>
+            </TerminalContainer>
+          </>
         )}
         <Notice>
           <p>
-            Please note that the <b>snap.manifest.json</b> and{' '}
-            <b>package.json</b> must be located in the server root directory and
-            the bundle must be hosted at the location specified by the location
-            field.
+            If you're getting a Method not found error, the snap must have been
+            terminated. Run your code again.
           </p>
         </Notice>
       </CardContainer>

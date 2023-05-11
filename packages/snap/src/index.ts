@@ -1,6 +1,7 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
-import { panel, text } from '@metamask/snaps-ui';
+import * as snapsUi from '@metamask/snaps-ui';
 import { StaticModuleRecord } from '@endo/static-module-record';
+const { panel, text } = snapsUi;
 
 const defaultEndowments = {
   snap,
@@ -10,6 +11,36 @@ const defaultEndowments = {
 };
 
 let subSnapExports: any = {};
+
+const rawModules: Record<string, object> = {};
+
+const syntheticModulesCompartment = new Compartment(
+  {},
+  {},
+  {
+    name: 'syntheticModules',
+    resolveHook: (moduleSpecifier) => moduleSpecifier,
+    importHook: async (moduleSpecifier) => {
+      const ns =
+        rawModules[moduleSpecifier].default || rawModules[moduleSpecifier];
+
+      const staticModuleRecord = Object.freeze({
+        imports: [],
+        exports: Array.from(new Set(Object.keys(ns).concat(['default']))),
+        execute: (moduleExports: any) => {
+          Object.assign(moduleExports, ns);
+          moduleExports.default = ns;
+        },
+      });
+      return staticModuleRecord;
+    },
+  },
+);
+const addToCompartment = async (name, nsObject) => {
+  rawModules[name] = nsObject;
+  return (await syntheticModulesCompartment.import(name)).namespace;
+};
+
 
 /**
  * Persists the snap state
@@ -83,13 +114,19 @@ async function evaluate(code: string): Promise<object> {
   const compartment = new Compartment(
     defaultEndowments,
     {
-      // we could use moduleMapHook to avoid an asynchronous call to import and make importNow work, but it's likely more complicated than handling it asynchronously
+      '@metamask/snaps-ui': await addToCompartment(
+        '@metamask/snaps-ui',
+        snapsUi,
+      ),
     },
     {
-      importHook: async (_specifier: string) => {
-        return new StaticModuleRecord(code, '.');
+      importHook: async (specifier: string) => {
+        if (specifier === 'anything') {
+          return new StaticModuleRecord(code, '.');
+        }
+        throw Error(`Cannot import ${specifier}`);
       },
-      resolveHook: a => a,
+      resolveHook: (a) => a,
     },
   );
   const { namespace } = await compartment.import('anything');
