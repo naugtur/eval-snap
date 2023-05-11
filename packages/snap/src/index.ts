@@ -100,6 +100,32 @@ async function checkPermittedDomain(domain: string) {
   return permittedDomains.includes(domain);
 }
 
+let approvalQueue: Promise<any> = Promise.resolve(true);
+
+/**
+ * Ask to load a module without causing Request of type 'snap_dialog:confirmation' already pending for origin.
+ *
+ * @param specifier - name to display.
+ * @returns The export namespace of the evaluated code.
+ */
+async function askToLoad(specifier: string) {
+  const next = approvalQueue.then(() =>
+    snap.request({
+      method: 'snap_dialog',
+      params: {
+        type: 'confirmation',
+        content: text(
+          `Knock knock! Who's there? It's ${specifier
+            .replace('/npm/', '')
+            .replace('/+esm', '')}. Can I come in?`,
+        ),
+      },
+    }),
+  );
+  approvalQueue = next;
+  return next;
+}
+
 /**
  * Evaluates the given code in a compartment.
  *
@@ -116,47 +142,45 @@ async function evaluate(code: string): Promise<object> {
       ),
     },
     {
+      __evadeHtmlCommentTest__: true,
       importHook: async (specifier: string) => {
         if (specifier === '*/#/*') {
           return new StaticModuleRecord(code, '.');
         }
 
-        if (specifier.startsWith('https://')) {
-          // ask the user for permission
-          const approved = await snap.request({
-            method: 'snap_dialog',
-            params: {
-              type: 'confirmation',
-              content: text(
-                `Knock knock! Who's there? It's ${specifier}. Can I come in?`,
-              ),
-            },
-          });
-          if (approved) {
-            const remoteCode = await fetch(specifier).then((res) => res.text());
-            return new StaticModuleRecord(remoteCode, specifier);
-          }
-        }
+        // if (specifier.startsWith('https://')) {
+        //   // ask the user for permission
+        //   const approved = await snap.request({
+        //     method: 'snap_dialog',
+        //     params: {
+        //       type: 'confirmation',
+        //       content: text(
+        //         `Knock knock! Who's there? It's ${specifier}. Can I come in?`,
+        //       ),
+        //     },
+        //   });
+        //   if (approved) {
+        //     const remoteCode = await fetch(specifier).then((res) => res.text());
+        //     return new StaticModuleRecord(remoteCode, specifier);
+        //   }
+        // }
         // ask the user for permission
-        const approved = await snap.request({
-          method: 'snap_dialog',
-          params: {
-            type: 'confirmation',
-            content: text(
-              `Knock knock! Who's there? ${specifier} from NPM. Can I come in?`,
-            ),
-          },
-        });
+        const approved = await askToLoad(specifier);
         if (approved) {
-          const remoteCode = await fetch(`https://esm.run/${specifier}`).then(
-            (res) => {
-              if (!res.ok) {
-                throw Error(`Cannot import ${specifier}`);
-              }
-              return res.text();
-            },
+          let url = `https://esm.run/${specifier}`;
+          if (specifier.startsWith('/npm/')) {
+            url = `https://cdn.jsdelivr.net${specifier}`;
+          }
+          const remoteCode = await fetch(url).then((res) => {
+            if (!res.ok) {
+              throw Error(`Cannot import ${specifier}`);
+            }
+            return res.text();
+          });
+          return new StaticModuleRecord(
+            remoteCode.replace('<!', '< !').replace('-->', '-- >'),
+            specifier,
           );
-          return new StaticModuleRecord(remoteCode, specifier);
         }
       },
       resolveHook: (a) => a,
