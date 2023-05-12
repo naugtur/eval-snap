@@ -155,36 +155,48 @@ Promise.resolve().then(async () => {
   await connectSnap();
   await requestPermissions();
 
-  $('.js-code-editor', (editor) => {
-    const $editor = $$(editor);
-    const filename = $editor('.js-gist-filename')[0].value;
-    const extension = filename.split('.').pop();
+  const snapify = async () => {
+    $('.js-code-editor', (editor) => {
+      if (editor.snapifySetUp) {
+        return;
+      }
+      const $editor = $$(editor);
+      const filename = $editor('.js-gist-filename')[0].value;
+      const extension = filename.split('.').pop();
 
-    if (extension === 'js') {
-      const runBt = $$.el('button', { textContent: 'Run' });
-      $$.on(runBt, 'click', async (e) => {
-        e.preventDefault(); //or else the page will reload
-        const code = $editor('.js-blob-contents')[0].value;
+      if (extension === 'js') {
+        editor.snapifySetUp = true;
 
-        console.info(code);
-        const res = await evaluate(code);
-        alert(res);
-      });
-      $editor('.gist-filename-input')[0].parentElement.prepend(runBt);
-    }
+        const runBt = $$.el('button', { textContent: 'Run' });
+        $$.on(runBt, 'click', async (e) => {
+          e.preventDefault(); //or else the page will reload
+          const code = $editor('.js-blob-contents')[0].value;
 
-    if (extension === 'json') {
-      const testBt = $$.el('button', { textContent: 'Send RPC' });
-      $$.on(testBt, 'click', async (e) => {
-        e.preventDefault(); //or else the page will reload
-        const code = $editor('.js-blob-contents')[0].value;
-        console.info(code);
-
-        sendRpc(code).then((response) => {
-          alert(response);
+          console.info(code);
+          const res = await evaluate(code);
+          alert(res);
         });
-      });
-      $editor('.gist-filename-input')[0].parentElement.prepend(testBt);
-    }
-  });
+        $editor('.gist-filename-input')[0].parentElement.prepend(runBt);
+      }
+
+      if (extension === 'json') {
+        editor.snapifySetUp = true;
+
+        const testBt = $$.el('button', { textContent: 'Send RPC' });
+        $$.on(testBt, 'click', async (e) => {
+          e.preventDefault(); //or else the page will reload
+          const code = $editor('.js-blob-contents')[0].value;
+          console.info(code);
+
+          sendRpc(code).then((response) => {
+            alert(response);
+          });
+        });
+        $editor('.gist-filename-input')[0].parentElement.prepend(testBt);
+      }
+    });
+  };
+  snapify();
+
+  setInterval(snapify, 2000);
 });
