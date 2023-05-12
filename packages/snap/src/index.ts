@@ -1,6 +1,7 @@
 import { OnRpcRequestHandler } from '@metamask/snaps-types';
 import * as snapsUi from '@metamask/snaps-ui';
 import { StaticModuleRecord } from '@endo/static-module-record';
+import { addToCompartment, getRemoteModuleRecord } from './sesities';
 
 const { panel, text } = snapsUi;
 
@@ -8,34 +9,6 @@ const defaultEndowments = Object.assign({}, globalThis, { eval: undefined });
 
 let subSnapExports: any = {};
 
-const rawModules: Record<string, object> = {};
-
-const syntheticModulesCompartment = new Compartment(
-  {},
-  {},
-  {
-    name: 'syntheticModules',
-    resolveHook: (moduleSpecifier) => moduleSpecifier,
-    importHook: async (moduleSpecifier) => {
-      const ns =
-        rawModules[moduleSpecifier].default || rawModules[moduleSpecifier];
-
-      const staticModuleRecord = Object.freeze({
-        imports: [],
-        exports: Array.from(new Set(Object.keys(ns).concat(['default']))),
-        execute: (moduleExports: any) => {
-          Object.assign(moduleExports, ns);
-          moduleExports.default = ns;
-        },
-      });
-      return staticModuleRecord;
-    },
-  },
-);
-const addToCompartment = async (name: string, nsObject: object) => {
-  rawModules[name] = nsObject;
-  return (await syntheticModulesCompartment.import(name)).namespace;
-};
 
 /**
  * Persists the snap state.
@@ -79,9 +52,9 @@ async function getPermittedDomains(): Promise<string[]> {
 }
 
 /**
- * Adds a domain to the permitted domains
- * 
- * @param domain - The domain to add to the permitted domains
+ * Adds a domain to the permitted domains.
+ *
+ * @param domain - The domain to add to the permitted domains.
  */
 async function setPermittedDomain(domain: string) {
   const permittedDomains = await getPermittedDomains();
@@ -91,40 +64,47 @@ async function setPermittedDomain(domain: string) {
 
 /**
  * Checks if a given domain is permitted.
- * 
- * @param domain - The domain to check
- * @returns boolean - Whether the domain is permitted
+ *
+ * @param domain - The domain to check.
+ * @returns Whether the domain is permitted.
  */
 async function checkPermittedDomain(domain: string) {
   const permittedDomains = await getPermittedDomains();
   return permittedDomains.includes(domain);
 }
 
-let approvalQueue: Promise<any> = Promise.resolve(true);
+let approvalSequence: Promise<any> = Promise.resolve(true);
 
 /**
- * Ask to load a module without causing Request of type 'snap_dialog:confirmation' already pending for origin.
+ * Ask to load a module without causing: Request of type 'snap_dialog:confirmation' already pending for origin.
  *
  * @param specifier - name to display.
  * @returns The export namespace of the evaluated code.
  */
 async function askToLoad(specifier: string) {
-  const next = approvalQueue.then(() =>
-    snap.request({
-      method: 'snap_dialog',
-      params: {
-        type: 'confirmation',
-        content: text(
-          `Knock knock! Who's there? It's ${specifier
-            .replace('/npm/', '')
-            .replace('/+esm', '')}. Can I come in?`,
-        ),
-      },
-    }),
+  const next = approvalSequence.then(() =>
+    snap
+      .request({
+        method: 'snap_dialog',
+        params: {
+          type: 'confirmation',
+          content: text(
+            `Knock knock! Who's there? It's ${specifier
+              .replace(/^\/npm\//, '')
+              .replace(/\/\+esm$/, '')}. Can I come in?`,
+          ),
+        },
+      })
+      .then((approved) => {
+        if (!approved) {
+          throw Error('User denied');
+        }
+      }),
   );
-  approvalQueue = next;
+  approvalSequence = next;
   return next;
 }
+
 
 /**
  * Evaluates the given code in a compartment.
@@ -148,40 +128,8 @@ async function evaluate(code: string): Promise<object> {
           return new StaticModuleRecord(code, '.');
         }
 
-        // if (specifier.startsWith('https://')) {
-        //   // ask the user for permission
-        //   const approved = await snap.request({
-        //     method: 'snap_dialog',
-        //     params: {
-        //       type: 'confirmation',
-        //       content: text(
-        //         `Knock knock! Who's there? It's ${specifier}. Can I come in?`,
-        //       ),
-        //     },
-        //   });
-        //   if (approved) {
-        //     const remoteCode = await fetch(specifier).then((res) => res.text());
-        //     return new StaticModuleRecord(remoteCode, specifier);
-        //   }
-        // }
-        // ask the user for permission
-        const approved = await askToLoad(specifier);
-        if (approved) {
-          let url = `https://esm.run/${specifier}`;
-          if (specifier.startsWith('/npm/')) {
-            url = `https://cdn.jsdelivr.net${specifier}`;
-          }
-          const remoteCode = await fetch(url).then((res) => {
-            if (!res.ok) {
-              throw Error(`Cannot import ${specifier}`);
-            }
-            return res.text();
-          });
-          return new StaticModuleRecord(
-            remoteCode.replace('<!', '< !').replace('-->', '-- >'),
-            specifier,
-          );
-        }
+        await askToLoad(specifier);
+        return getRemoteModuleRecord(specifier);
       },
       resolveHook: (a) => a,
     },
@@ -209,7 +157,7 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
   const { params } = request;
   const warning = panel([
     text(
-      `The domain at **${origin}** would like unmitigated access to your wallet.`,
+      `The domain at ** ${origin}** would like unmitigated access to your wallet.`,
     ),
     text(
       `You should only grant this if it's a site you trust with your entire wallet. Probably only do this if you're a developer and have read the source code of the site you're connecting to.`,
@@ -247,6 +195,7 @@ export const onRpcRequest: OnRpcRequestHandler = async ({
       subSnapExports = await evaluate(code);
       return `ok. exports: ${Object.keys(subSnapExports).join()}`;
     default:
+      // TODO: do the same for onTransaction.
       if (subSnapExports.onRpcRequest) {
         return await subSnapExports.onRpcRequest({ origin, request });
       }
