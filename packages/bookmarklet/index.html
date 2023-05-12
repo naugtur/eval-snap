@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      html,body,div { margin: 0; padding: 0; font: normal 16px/24px Helvetica Neue, Helvetica, sans-serif; color: #333; }
+      #main { max-width: 630px; margin: 3em auto; }
+      .bookmarklet { display: inline-block; padding: .5em 1em; color: #fff; background: #50dcf3; border-radius: 4px; text-decoration: none; }
+      a { color: #50dcf3; }
+      .dim { color: #999; }
+    </style>
+  </head>
+  <body>
+    <div id="main">
+      <h1>Snapify</h1>
+      <p>
+        Drag this button to your bookmarks bar to save it as a bookmarklet:
+      </p>
+      <p>
+        <a class="bookmarklet" href="javascript:(function()%7Bconst%20defaultSnapOrigin%3D%22local%3Ahttp%3A%2F%2Flocalhost%3A8080%22%2C%24%24%3D(e%3Ddocument)%3D%3E(t%2Cn)%3D%3E%7Bconst%20a%3DArray.from(e.querySelectorAll(t))%3Breturn%20n%3Fa.map(n)%3Aa%7D%3B%24%24.el%3D(e%2Ct)%3D%3E%7Bconst%20n%3Ddocument.createElement(e)%3Breturn%20t%26%26Object.assign(n%2Ct)%2Cn%7D%2C%24%24.listeners%3Dnew%20WeakMap%2C%24%24.on%3D(e%2Ct%2Cn)%3D%3E%7B%24%24.listeners.has(e)%7C%7C%24%24.listeners.set(e%2C%5B%5D)%2C%24%24.listeners.get(e).push(%7Bevent%3At%2Clistener%3An%7D)%2Ce.addEventListener(t%2Cn)%7D%2C%24%24.off%3De%3D%3E%7B%24%24.listeners.has(e)%26%26%24%24.listeners.get(e).map((t%3D%3E%7Be.removeEventListener(t.event%2Ct.listener)%7D))%7D%2C%24%24.css%3D(e%2Ct)%3D%3E%7BObject.entries(t).map(((%5Bt%2Cn%5D)%3D%3E%7Be.style%5Bt%5D%3Dn%7D))%7D%3Bconst%20%24%3D%24%24()%2CgetSnaps%3Dasync()%3D%3Eawait%20window.ethereum.request(%7Bmethod%3A%22wallet_getSnaps%22%7D)%2CconnectSnap%3Dasync(e%3DdefaultSnapOrigin%2Ct%3D%7B%7D)%3D%3E%7Bawait%20window.ethereum.request(%7Bmethod%3A%22wallet_requestSnaps%22%2Cparams%3A%7B%5Be%5D%3At%7D%7D)%7D%2CgetSnap%3Dasync%20e%3D%3E%7Btry%7Bconst%20t%3Dawait%20getSnaps()%3Breturn%20Object.values(t).find((t%3D%3Et.id%3D%3D%3DdefaultSnapOrigin%26%26(!e%7C%7Ct.version%3D%3D%3De)))%7Dcatch(e)%7Breturn%20void%20console.log(%22Failed%20to%20obtain%20installed%20snap%22%2Ce)%7D%7D%2Cevaluate%3Dasync%20e%3D%3Ewindow.ethereum.request(%7Bmethod%3A%22wallet_invokeSnap%22%2Cparams%3A%7BsnapId%3AdefaultSnapOrigin%2Crequest%3A%7Bmethod%3A%22evaluate%22%2Cparams%3A%5Be%5D%7D%7D%7D)%2CrequestPermissions%3Dasync()%3D%3E%7Bawait%20window.ethereum.request(%7Bmethod%3A%22wallet_invokeSnap%22%2Cparams%3A%7BsnapId%3AdefaultSnapOrigin%2Crequest%3A%7Bmethod%3A%22requestPermissions%22%7D%7D%7D)%7D%2CsendRpc%3Dasync%20e%3D%3Eawait%20window.ethereum.request(%7Bmethod%3A%22wallet_invokeSnap%22%2Cparams%3A%7BsnapId%3AdefaultSnapOrigin%2Crequest%3AJSON.parse(e)%7D%7D)%2CisLocalSnap%3De%3D%3Ee.startsWith(%22local%3A%22)%3BPromise.resolve().then((async()%3D%3E%7Bawait%20connectSnap()%2Cawait%20requestPermissions()%2C%24(%22.js-code-editor%22%2C(e%3D%3E%7Bconst%20t%3D%24%24(e)%2Cn%3Dt(%22.js-gist-filename%22)%5B0%5D.value.split(%22.%22).pop()%3Bif(%22js%22%3D%3D%3Dn)%7Bconst%20e%3D%24%24.el(%22button%22%2C%7BtextContent%3A%22Run%22%7D)%3B%24%24.on(e%2C%22click%22%2C(async%20e%3D%3E%7Be.preventDefault()%3Bconst%20n%3Dt(%22.js-blob-contents%22)%5B0%5D.value%3Bconsole.info(n)%3Bconst%20a%3Dawait%20evaluate(n)%3Balert(a)%7D))%2Ct(%22.gist-filename-input%22)%5B0%5D.parentElement.prepend(e)%7Dif(%22json%22%3D%3D%3Dn)%7Bconst%20e%3D%24%24.el(%22button%22%2C%7BtextContent%3A%22Send%20RPC%22%7D)%3B%24%24.on(e%2C%22click%22%2C(async%20e%3D%3E%7Be.preventDefault()%3Bconst%20n%3Dt(%22.js-blob-contents%22)%5B0%5D.value%3Bconsole.info(n)%2CsendRpc(n).then((e%3D%3E%7Balert(e)%7D))%7D))%2Ct(%22.gist-filename-input%22)%5B0%5D.parentElement.prepend(e)%7D%7D))%7D))%3B%7D)()">Snapify</a>
+      </p>
+      
+      <p class="dim">This page was created with the <a href="https://github.com/mrcoles/bookmarklet">bookmarklet</a> npm library.</p>
+    </div>
+  </body>
+</html>
+
